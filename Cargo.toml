@@ -1,6 +1,6 @@
 [package]
 name = "less-delay"
-version = "0.2.0"
+version = "0.3.0"
 authors = []
 edition = "2021"
 
@@ -13,6 +13,7 @@ crate-type = ["cdylib"]
 [dependencies]
 skyline = "0.2.0"
 skyline_ex = { package = "skyline", git = "https://github.com/Skyline-ex/skylinex" }
+once_cell = { version = "1.20.2" }
 
 [profile.dev]
 panic = "abort"

@@ -1,5 +1,8 @@
+mod offsets;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use offsets::{LOC_RUN_SCENE_UPDATE, LOC_VSYNC_COUNT_THREAD};
 use skyline::hooks::InlineCtx;
 
 unsafe fn calc_nnsdk_offset() -> u64 {
@@ -23,14 +26,14 @@ unsafe fn set_interval_2(ctx: &mut InlineCtx) {
 
 static mut RUN: AtomicBool = AtomicBool::new(false);
 
-#[skyline::hook(offset = 0x3810664, inline)]
+#[skyline::hook(offset = LOC_VSYNC_COUNT_THREAD.get_offset_in_memory().unwrap(), inline)]
 unsafe fn vsync_count_thread(_: &skyline::hooks::InlineCtx) {
     RUN.store(true, Ordering::SeqCst);
 }
 
 static mut DUMMY_BLOCK: [u8; 0x100] = [0; 0x100];
 
-#[skyline::hook(offset = 0x374777c, inline)]
+#[skyline::hook(offset = LOC_RUN_SCENE_UPDATE.get_offset_in_memory().unwrap(), inline)]
 unsafe fn run_scene_update(_: &skyline::hooks::InlineCtx) {
     while !RUN.swap(false, Ordering::SeqCst) {
         skyline::nn::hid::GetNpadFullKeyState(DUMMY_BLOCK.as_mut_ptr() as _, &0);
@@ -77,10 +80,12 @@ pub extern "C" fn main() {
         OFFSET2 = calc_nnsdk_offset() + 0x26e94;
     }
 
-    skyline::install_hooks!(
-        set_interval_1,
-        set_interval_2,
-        run_scene_update,
-        vsync_count_thread,
-    );
+    if ensure_hooks!(LOC_VSYNC_COUNT_THREAD, LOC_RUN_SCENE_UPDATE) {
+        skyline::install_hooks!(
+            set_interval_1,
+            set_interval_2,
+            run_scene_update,
+            vsync_count_thread,
+        );
+    }
 }
