@@ -1,34 +1,58 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
-
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
 
     nix-skyline-rs.url = "github:Naxdy/nix-skyline-rs";
     nix-skyline-rs.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
-    { self
-    , flake-utils
-    , nix-skyline-rs
-    , ...
-    }: (flake-utils.lib.eachDefaultSystem (system:
     {
-      packages = {
-        default = self.packages.${system}.less-delay;
+      self,
+      nix-skyline-rs,
+      nixpkgs,
+      ...
+    }:
+    let
+      supportedSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
 
-        less-delay =
-          let
-            cargoTOML = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-          in
-          nix-skyline-rs.lib.${system}.mkNroPackage {
-            pname = cargoTOML.package.name;
-            version = cargoTOML.package.version;
-            src = self;
-          };
-      };
+      forEachSupportedSystem =
+        f:
+        nixpkgs.lib.genAttrs supportedSystems (
+          system:
+          f {
+            inherit system;
+          }
+        );
+    in
+    {
+      packages = forEachSupportedSystem (
+        { system, ... }:
+        {
+          default = self.packages.${system}.less-delay;
 
-      devShells.default = nix-skyline-rs.devShells.${system}.default;
-    }));
+          less-delay =
+            let
+              cargoTOML = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+            in
+            nix-skyline-rs.lib.${system}.mkNroPackage {
+              pname = cargoTOML.package.name;
+              version = cargoTOML.package.version;
+              src = self;
+            };
+        }
+      );
+
+      devShells = forEachSupportedSystem (
+        { system, ... }:
+        {
+          inherit (nix-skyline-rs.devShells.${system}) default;
+        }
+      );
+    };
 }
