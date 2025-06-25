@@ -1,6 +1,6 @@
 [package]
 name = "less-delay"
-version = "0.3.0"
+version = "1.0.0"
 authors = []
 edition = "2021"
 
